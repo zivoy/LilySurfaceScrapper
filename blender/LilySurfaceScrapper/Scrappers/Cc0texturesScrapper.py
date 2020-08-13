@@ -34,12 +34,8 @@ class Cc0texturesScrapper(AbstractScrapper):
     @classmethod
     def canHandleUrl(cls, url):
         """Return true if the URL can be scrapped by this scrapper."""
-        return (
-            url.startswith("https://cc0textures.com/view.php?tex=")
-            or url.startswith("https://cc0textures.com/view?tex=")
-            or url.startswith("https://www.cc0textures.com/view?id=")
-            or url.startswith("https://cc0textures.com/view?id=")
-        )
+        pattern = r"https://(?:www\.)?cc0textures\.com/view(?:\.php)?\?(?:tex|id)="
+        return re.match(pattern, url) is not None
 
     def fetchVariantList(self, url):
         """Get a list of available variants.
@@ -84,6 +80,8 @@ class Cc0texturesScrapper(AbstractScrapper):
         with zipfile.ZipFile(zip_path,"r") as zip_ref:
             namelist = zip_ref.namelist()
             zip_ref.extractall(zip_dir)
+
+        os.remove(zip_path)
         
         # Translate cc0textures map names into our internal map names
         maps_tr = {
