@@ -34,15 +34,19 @@ class Cc0texturesScrapper(AbstractScrapper):
     @classmethod
     def canHandleUrl(cls, url):
         """Return true if the URL can be scrapped by this scrapper."""
-        pattern = r"https://(?:www\.)?cc0textures\.com/view(?:\.php)?\?(?:tex|id)="
+        pattern = r"(?:https://(?:www\.)?cc0textures\.com/view(?:\.php)?\?(?:tex|id)=(.+)|cc0\.link/a/(.+))"
         return re.match(pattern, url) is not None
 
     def fetchVariantList(self, url):
         """Get a list of available variants.
         The list may be empty, and must be None in case of error."""
 
-        query = parse_qs(urlparse(url).query)
-        asset_id = query.get('id', query.get('tex', [None]))[0]
+        if re.match("rcc0\.link/a/", url) is None:
+            query = parse_qs(urlparse(url).query)
+            asset_id = query.get('id', query.get('tex', [None]))[0]
+        else:
+            asset_id = url.split("cc0.link/a/")[-1]
+
         api_url = f"https://cc0textures.com/api/v1/full_json?id={asset_id}"
         
         data = self.fetchJson(api_url)
