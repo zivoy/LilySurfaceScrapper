@@ -78,7 +78,7 @@ class Cc0texturesScrapper(AbstractScrapper):
         if self.savedVariants is None:
             self.savedVariants = {self._variant:False, }
             for i in os.listdir(self.getTextureDirectory(os.path.join(self.home_dir, self._base_name))):
-                if i in self.savedVariants:#todo
+                if i in self.savedVariants:  # todo
                     self.savedVariants[i] = True
 
         return self.savedVariants[variantName]
