@@ -6,6 +6,8 @@
 
 import os
 import bpy
+
+from .CyclesLightData import CyclesLightData
 from .CyclesMaterialData import CyclesMaterialData
 from .CyclesWorldData import CyclesWorldData
 from .ScrappersManager import ScrappersManager
@@ -339,6 +341,148 @@ class OBJECT_OT_LilyWorldPromptVariant(PopupOperator, CallbackProps):
         cb(context)
         return {'FINISHED'}
 
+### Light
+
+class OBJECT_OT_LilyLightScrapper(PopupOperator, CallbackProps):
+    """Import a world just by typing its URL. See documentation for a list of supported world providers."""
+    bl_idname = "object.lily_light_import"
+    bl_label = "Import light"
+
+    url: bpy.props.StringProperty(
+        name="URL",
+        description="Address from which importing the light data",
+        default=""
+    )
+
+    create_world: bpy.props.BoolProperty(
+        name="Create World",
+        description=(
+            "Create the light material associated with downloaded maps. " +
+            "You most likely want this, but for integration into other tool " +
+            "you may want to set it to false and handle the world creation by yourself."
+        ),
+        options={'HIDDEN', 'SKIP_SAVE'},
+        default=True
+    )
+
+    variant: bpy.props.StringProperty(
+        name="Variant",
+        description="Look for the variant that has this name (for scripting access only)",
+        options={'HIDDEN', 'SKIP_SAVE'},
+        default=""
+    )
+
+    def execute(self, context):
+        pref = getPreferences(context)
+        if bpy.data.filepath == '' and not os.path.isabs(pref.texture_dir):
+            self.report({'ERROR'}, 'You must save the file before using LilySurfaceScrapper')
+            return {'CANCELLED'}
+
+        texdir = os.path.dirname(bpy.data.filepath)
+        data = CyclesLightData(self.url, texture_root=texdir)
+        if data.error is not None:
+            self.report({'ERROR_INVALID_INPUT'}, data.error)
+            return {'CANCELLED'}
+
+        variants = data.getVariantList()
+
+        selected_variant = -1
+        if not variants or len(variants) == 1:
+            selected_variant = 0
+        elif self.variant != "":
+            for i, v in enumerate(variants):
+                if v == self.variant:
+                    selected_variant = i
+                    break
+
+        if selected_variant == -1:
+            # More than one variant, prompt the user for which one she wants
+            internal_states['kamour'] = data
+            bpy.ops.object.lily_light_prompt_variant('INVOKE_DEFAULT',
+                internal_state='kamour',
+                create_world=self.create_world,
+                callback_handle=self.callback_handle)
+        else:
+            data.selectVariant(selected_variant)
+            # if self.create_world:
+            data.createLights()
+            # else:
+            #     data.loadImages()
+            cb = get_callback(self.callback_handle)
+            cb(context)
+        return {'FINISHED'}
+
+class OBJECT_OT_LilyClipboardLightScrapper(PopupOperator, CallbackProps):
+    """Same as lily_world_import except that it gets the URL from clipboard."""
+    bl_idname = "object.lily_light_import_from_clipboard"
+    bl_label = "Import from clipboard"
+
+    def invoke(self, context, event):
+        return self.execute(context)
+
+    def execute(self, context):
+        bpy.ops.object.lily_light_import('EXEC_DEFAULT', url=bpy.context.window_manager.clipboard)
+        return {'FINISHED'}
+
+def list_variant_enum(self, context):
+    """Callback filling enum items for OBJECT_OT_LilySurfacePromptVariant"""
+    global internal_states
+    data = internal_states[self.internal_state]
+    items = []
+    for i, v in enumerate(data.getVariantList()):
+        icon = "CHECKMARK" if data.isDownloaded(v) else "IMPORT"
+        items.append((str(i), v, v, icon, i))
+    internal_states['dsdweykgkbit'] = items # keep a reference to avoid a known crash of blander, says the doc
+    return items
+
+class OBJECT_OT_LilyLightPromptVariant(PopupOperator, CallbackProps):
+    """While importing a world, prompt the user for teh texture variant
+    if there are several worlds provided by the URL"""
+    bl_idname = "object.lily_light_prompt_variant"
+    bl_label = "Select Variant"
+
+    variant: bpy.props.EnumProperty(
+        name="Variant",
+        description="Name of the world variant to load",
+        items=list_variant_enum,
+    )
+
+    reisntall: bpy.props.BoolProperty(
+        name="Reinstall Textures",
+        description="Reinstall the textures instead of using the ones present on the system",
+        default=False,
+        options={"SKIP_SAVE"}
+    )
+
+    internal_state: bpy.props.StringProperty(
+        name="Internal State",
+        description="System property used to transfer the state of the operator",
+        options={'HIDDEN', 'SKIP_SAVE'}
+    )
+
+    create_world: bpy.props.BoolProperty(
+        name="Create World",
+        description=(
+            "Create the world associated with downloaded maps. " +
+            "You most likely want this, but for integration into other tool " +
+            "you may want to set it to false and handle the world creation by yourself."
+        ),
+        options={'HIDDEN', 'SKIP_SAVE'},
+        default=True
+    )
+
+    def execute(self, context):
+        data = internal_states[self.internal_state]
+        data.setReinstall(bool(self.reisntall))
+        data.selectVariant(int(self.variant))
+        # if self.create_world:
+        data.createWorld()
+        # else:
+        #     data.loadImages()
+        cb = get_callback(self.callback_handle)
+        cb(context)
+        return {'FINISHED'}
+
 
 ## Panels
 
@@ -390,10 +534,39 @@ class WORLD_PT_LilySurfaceScrapper(bpy.types.Panel):
                     layout.operator("wm.url_open", text=S.source_name).url = S.home_url
                     urls.add(S.home_url)
 
+
+class LIGHT_PT_LilySurfaceScrapper(bpy.types.Panel):
+    """Panel with the Lily Scrapper button"""
+    bl_label = "Lily Surface Scrapper"
+    bl_idname = "LIGHT_PT_LilySurfaceScrapper"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "data"
+
+    @classmethod
+    def poll(cls, context):
+        return context.object is not None and context.object.type == "LIGHT"
+
+    def draw(self, context):
+        layout = self.layout
+        pref = getPreferences(context)
+        if bpy.data.filepath == '' and not os.path.isabs(pref.texture_dir):
+            layout.label(text="You must save the file to use Lily Surface Scrapper")
+            layout.label(text="or setup a texture directory in preferences.")
+        else:
+            layout.operator("object.lily_light_import")
+            layout.operator("object.lily_light_import_from_clipboard")
+            layout.label(text="Available sources:")
+            urls = {None}  # avoid doubles
+            for S in ScrappersManager.getScrappersList():
+                if 'LIGHT' in S.scrapped_type and S.home_url not in urls:
+                    layout.operator("wm.url_open", text=S.source_name).url = S.home_url
+                    urls.add(S.home_url)
+
 ## Registration
 
-from .Scrappers.AbstractScrapper import AbstractScrapper
-def generateThumbnailIcon(scraper: AbstractScrapper):
+
+def generateThumbnailIcon(scraper):
     global custom_icons
 
     items = dict()
@@ -444,6 +617,11 @@ def register():
     bpy.utils.register_class(OBJECT_OT_LilyWorldPromptVariant)
     bpy.utils.register_class(MATERIAL_PT_LilySurfaceScrapper)
     bpy.utils.register_class(WORLD_PT_LilySurfaceScrapper)
+    bpy.utils.register_class(LIGHT_PT_LilySurfaceScrapper)
+    bpy.utils.register_class(OBJECT_OT_LilyLightScrapper)
+    bpy.utils.register_class(OBJECT_OT_LilyClipboardLightScrapper)
+    bpy.utils.register_class(OBJECT_OT_LilyLightPromptVariant)
+
 
 def unregister():
     bpy.utils.unregister_class(OBJECT_OT_LilySurfaceScrapper)
@@ -454,3 +632,7 @@ def unregister():
     bpy.utils.unregister_class(OBJECT_OT_LilyWorldPromptVariant)
     bpy.utils.unregister_class(MATERIAL_PT_LilySurfaceScrapper)
     bpy.utils.unregister_class(WORLD_PT_LilySurfaceScrapper)
+    bpy.utils.unregister_class(LIGHT_PT_LilySurfaceScrapper)
+    bpy.utils.unregister_class(OBJECT_OT_LilyLightScrapper)
+    bpy.utils.unregister_class(OBJECT_OT_LilyClipboardLightScrapper)
+    bpy.utils.unregister_class(OBJECT_OT_LilyLightPromptVariant)

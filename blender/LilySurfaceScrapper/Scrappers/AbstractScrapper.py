@@ -35,7 +35,7 @@ from ..settings import TEXTURE_DIR
 from ..preferences import getPreferences
 
 class AbstractScrapper():
-    # Can be 'MATERIAL', 'WORLD'
+    # Can be 'MATERIAL', 'WORLD', 'LIGHT'
     scrapped_type = {'MATERIAL'}
     # The name of the scrapped source, displayed in UI
     source_name = "<Abstract>"
@@ -152,6 +152,15 @@ class AbstractScrapper():
             else:
                 self.error = "URL not found: {}".format(url)
                 return None
+        return path
+
+    def fetchText(self, url, material_name, filename):
+        data = self._fetch(url)
+        root = self.getTextureDirectory(material_name)
+        path = os.path.join(root, filename)
+        with open(path, "wb") as f:
+            f.write(data.content)
+        data.close()
         return path
 
     def clearString(self, s):

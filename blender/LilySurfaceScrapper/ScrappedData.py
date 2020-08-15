@@ -81,3 +81,7 @@ class ScrappedData():
     def setReinstall(self, value):
         self.reinstall = value
         return True
+
+    def setReinstall(self, value):
+        self.reinstall = value
+        return True
