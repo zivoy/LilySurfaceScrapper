@@ -64,6 +64,8 @@ class CgbookcaseScrapper(AbstractScrapper):
         self._variants = variants
         self._double_sided = double_sided
         self._base_name = str(html.xpath("//h1/text()")[0])
+
+        self.createMetadetaFile(url, self._base_name)
         return variants
     
     def fetchVariant(self, variant_index, material_data, reinstall=False):
@@ -123,6 +125,7 @@ class CgbookcaseScrapper(AbstractScrapper):
         if self.savedVariants is None:
             self.savedVariants = {i: False for i in self._variants}
             for i in os.listdir(self.getTextureDirectory(os.path.join(self.home_dir, self._base_name))):
-                self.savedVariants[i] = True
+                if i in self.savedVariants:
+                    self.savedVariants[i] = True
 
         return self.savedVariants[variantName]

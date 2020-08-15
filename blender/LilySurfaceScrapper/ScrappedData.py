@@ -66,6 +66,9 @@ class ScrappedData():
     def isDownloaded(self, variantName):
         return self._scrapper.isDownloaded(variantName)
 
+    def fetchThumbnail(self):
+        return self._scrapper.fetchThumbnail()
+
     def selectVariant(self, variant_index):
         if self.error is not None:
             return False

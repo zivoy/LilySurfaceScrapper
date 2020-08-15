@@ -50,6 +50,8 @@ class TextureHavenScrapper(AbstractScrapper):
         self._maps = maps
         self._variants = variants
         self._base_name = html.xpath("//title/text()")[0].split('|')[0].strip().replace("_", " ").title()
+
+        self.createMetadetaFile(url, self._base_name)
         return variants
     
     def fetchVariant(self, variant_index, material_data, reinstall=False):
@@ -87,7 +89,6 @@ class TextureHavenScrapper(AbstractScrapper):
             'Metallic': 'metallic',
             'AO': 'ambientOcclusion',
             'Rough Ao': 'ambientOcclusionRough',
-            'Specular': 'specular',
             'Displacement': 'height',
         }
 
@@ -105,6 +106,7 @@ class TextureHavenScrapper(AbstractScrapper):
         if self.savedVariants is None:
             self.savedVariants = {i: False for i in self._variants}
             for i in os.listdir(self.getTextureDirectory(os.path.join(self.home_dir, self._base_name))):
-                self.savedVariants[i] = True
+                if i in self.savedVariants:
+                    self.savedVariants[i] = True
 
         return self.savedVariants[variantName]

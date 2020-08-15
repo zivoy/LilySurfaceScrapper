@@ -59,9 +59,16 @@ class Cc0texturesScrapper(AbstractScrapper):
         variants = list(variants_data.keys())
         variants_urls = [variants_data[v]["RawDownloadLink"] for v in variants]
 
+        self.createMetadetaFile(url, asset_id)
+
         self._variants_urls = variants_urls
         self._variants = variants
         self._base_name = asset_id
+
+        try:
+            self._thumbnailUrl = data["Assets"][asset_id]["PreviewSphere"]["512-PNG"]
+        except:
+            pass
         return variants
 
     def fetchVariant(self, variant_index, material_data, reinstall=False):
@@ -80,6 +87,8 @@ class Cc0texturesScrapper(AbstractScrapper):
         zip_url = variants_urls[variant_index]
 
         material_data.name = os.path.join(self.home_dir, self._base_name, variant)
+
+        self.saveThumbnail(self._thumbnailUrl, self._base_name)
 
         if reinstall or not self.isDownloaded(variant):
             zip_path = self.fetchZip(zip_url, material_data.name, "textures.zip")
@@ -127,6 +136,7 @@ class Cc0texturesScrapper(AbstractScrapper):
         if self.savedVariants is None:
             self.savedVariants = {i: False for i in self._variants}
             for i in os.listdir(self.getTextureDirectory(os.path.join(self.home_dir, self._base_name))):
-                self.savedVariants[i] = True
+                if i in self.savedVariants:
+                    self.savedVariants[i] = True
 
         return self.savedVariants[variantName]

@@ -11,6 +11,7 @@ from .CyclesWorldData import CyclesWorldData
 from .ScrappersManager import ScrappersManager
 from .callback import register_callback, get_callback
 from .preferences import getPreferences
+import bpy.utils.previews
 
 ## Operators
 
@@ -21,6 +22,10 @@ from .preferences import getPreferences
 internal_states = {}
 # todo: potential solution? gray out until link is done bing fetched
 #  https://docs.blender.org/api/current/bpy.types.UILayout.html#bpy.types.UILayout.enabled
+
+
+registeredThumbnails = set()
+custom_icons = bpy.utils.previews.new()
 
 
 class PopupOperator(bpy.types.Operator):
@@ -358,7 +363,7 @@ class MATERIAL_PT_LilySurfaceScrapper(bpy.types.Panel):
             urls = {None}  # avoid doubles
             for S in ScrappersManager.getScrappersList():
                 if 'MATERIAL' in S.scrapped_type and S.home_url not in urls:
-                    layout.operator("wm.url_open", text=S.source_name).url = S.home_url
+                    layout.operator("wm.url_open", text=S.source_name).url = S.home_url  # todo: add image selector for downloaded stuff
                     urls.add(S.home_url)
 
 class WORLD_PT_LilySurfaceScrapper(bpy.types.Panel):
@@ -386,6 +391,49 @@ class WORLD_PT_LilySurfaceScrapper(bpy.types.Panel):
                     urls.add(S.home_url)
 
 ## Registration
+
+from .Scrappers.AbstractScrapper import AbstractScrapper
+def generateThumbnailIcon(scraper: AbstractScrapper):
+    global custom_icons
+
+    items = dict()
+
+    basedir = scraper.getTextureDirectory(scraper.home_dir)
+
+    for i in os.listdir(basedir):
+        if i in registeredThumbnails:
+            items[i] = i
+            continue
+        metadetaFile = os.path.join(basedir, i, scraper.metadataFilename)
+        if not os.path.isfile(metadetaFile): # skip anything that does not have a metadeta file to make stuff easier for now todo use local scraper
+            continue
+        for j in os.listdir(os.path.join(basedir, i)):
+            if "thumbnail" in j:
+                thumbnail = j
+                break
+        else:
+            # metadetaFile = os.path.join(basedir, i, scraper.metadataFilename)
+            # if os.path.isfile(metadetaFile):
+            #     with open(metadetaFile, "r") as fl:
+            #         scraper.saveThumbnail(fl.read(), i) todo get thumbnail file
+
+            if "missingThumbnail" not in registeredThumbnails:
+                registeredThumbnails.add("missingThumbnail")
+                missingThumb = scraper.fetchImage(
+                    "https://icon-library.com/images/image-missing-icon/image-missing-icon-14.jpg",
+                    "", "missingThumbnail")
+                custom_icons.load("missingThumbnail", missingThumb, 'IMAGE')
+                items[i] = "missingThumbnail"
+                continue
+        registeredThumbnails.add(i)
+        custom_icons.load(i, thumbnail, 'IMAGE')
+        items[i] = i
+    icons = list()
+    for i, v in enumerate(items.keys()):
+        icons.append((str(i), v, v, custom_icons[items[v]].icon_id, i))
+
+    bpy.types.Object.presets = bpy.props.EnumProperty(options={"SKIP_SAVE"}, items=icons, update=lambda x, y: x)
+
 
 def register():
     bpy.utils.register_class(OBJECT_OT_LilySurfaceScrapper)

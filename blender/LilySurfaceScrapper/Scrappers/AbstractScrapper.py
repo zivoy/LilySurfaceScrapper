@@ -44,6 +44,7 @@ class AbstractScrapper():
     # The home directory of the scraper
     home_dir = "Abstract"
 
+    metadataFilename = ".textureLink"
     savedVariants = None
 
     @classmethod
@@ -62,7 +63,7 @@ class AbstractScrapper():
             return None
         else:
             return r
-        
+
     def fetchHtml(self, url):
         """Get a lxml.etree object representing the scrapped page.
         Use xpath queries to browse it."""
@@ -78,7 +79,7 @@ class AbstractScrapper():
             return r.json()
         else:
             self.error = "URL not found: {}".format(url)
-    
+
     def fetchXml(self, url):
         """Get a lxml.etree object representing the scrapped page.
         Use xpath queries to browse it."""
@@ -162,7 +163,7 @@ class AbstractScrapper():
         """Get a list of available variants.
         The list may be empty, and must be None in case of error."""
         raise NotImplementedError
-    
+
     def fetchVariant(self, variant_index, material_data, reinstall):
         """Fill material_data with data from the selected variant.
         Must fill material_data.name and material_data.maps.
@@ -170,13 +171,24 @@ class AbstractScrapper():
         should be used to specify if to force redownload or use existing textures"""
         raise NotImplementedError
 
-    # def fetchThumbnail(self): todo
-    #     """"""
 
     def isDownloaded(self, variantName):
         """Return True or False based on if the given variant name is present on the system
-        this should be done by checking against savedVariants which should be a dict, and should be populated if None."""
+        this should be done by checking against savedVariants which should be a dict, and should be populated if None.
+        """
         raise NotImplementedError
 
     def createMetadetaFile(self, url, matName):
-        pass
+        """create a metadata file with the link of the item so that it can be called upon for thumbnails"""
+        directory = self.getTextureDirectory(os.path.join(self.home_dir, matName))
+        metadataPath = os.path.join(directory, self.metadataFilename)
+        if not os.path.isfile(metadataPath):
+            with open(metadataPath, "w") as metadata:
+                metadata.write(url)
+
+        return metadataPath
+
+    def saveThumbnail(self, url, matName):
+        """save the thumbnail given the material name and url"""
+        directory = os.path.join(self.home_dir, matName)
+        return self.fetchImage(url, directory, "thumbnail")
