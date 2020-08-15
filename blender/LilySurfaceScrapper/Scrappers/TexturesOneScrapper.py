@@ -25,6 +25,8 @@ class TexturesOneMaterialScrapper(AbstractScrapper):
     source_name = "3DAssets.one"
     home_url = "https://www.3dassets.one"
     scrapped_type = "MATERIAL"
+    home_dir = ""
+    # todo this needs a rewirite
 
     url_cache = {}
 
@@ -55,6 +57,7 @@ class TexturesOneMaterialScrapper(AbstractScrapper):
         """Return true if the URL can be scrapped by this scrapper."""
         if ("textures.one/go" in url or "3dassets.one/go" in url) and "?id=" in url:
             return cls.cacheSourceUrl(url)
+        # todo: textures seem to come from 3dtextures.me
         return False
 
     def fetchVariantList(self, url: str) -> list:
@@ -66,8 +69,13 @@ class TexturesOneMaterialScrapper(AbstractScrapper):
         self.source_scrapper = scrapper_class(self.texture_root)
         return self.source_scrapper.fetchVariantList(source_url)
 
-    def fetchVariant(self, variant_index, material_data):
+    def fetchVariant(self, variant_index, material_data, reinstall=False):
+        # todo implement reinstall
+        # todo implement homedir implementation
         return self.source_scrapper.fetchVariant(variant_index, material_data)
+
+    def isDownloaded(self, variantName):
+        return False  # todo find out what is going on here and implement this properly
 
 class TexturesOneWorldScrapper(TexturesOneMaterialScrapper):
     scrapped_type = "WORLD"

@@ -41,6 +41,10 @@ class AbstractScrapper():
     source_name = "<Abstract>"
     # The URL of the source's home, used for the list of availabel sources in panels
     home_url = None
+    # The home directory of the scraper
+    home_dir = "Abstract"
+
+    savedVariants = None
 
     @classmethod
     def canHandleUrl(cls, url):
@@ -108,14 +112,14 @@ class AbstractScrapper():
             os.makedirs(dirpath)
         return dirpath
 
-    def fetchImage(self, url, material_name, map_name, force_ext=False):
+    def fetchImage(self, url, material_name, map_name, force_ext=False, reinstall=False):
         """Utility helper for download textures"""
         root = self.getTextureDirectory(material_name)
         if not force_ext:
             ext = os.path.splitext(url)[1]
             map_name = map_name + ext
         path = os.path.join(root, map_name)
-        if os.path.isfile(path):
+        if os.path.isfile(path) and not reinstall:
             print("Using cached {}.".format(url))
         else:
             print("Downloading {}...".format(url))
@@ -159,8 +163,20 @@ class AbstractScrapper():
         The list may be empty, and must be None in case of error."""
         raise NotImplementedError
     
-    def fetchVariant(self, variant_index, material_data):
+    def fetchVariant(self, variant_index, material_data, reinstall):
         """Fill material_data with data from the selected variant.
         Must fill material_data.name and material_data.maps.
-        Return a boolean status, and fill self.error to add error messages."""
+        Return a boolean status, and fill self.error to add error messages.
+        should be used to specify if to force redownload or use existing textures"""
         raise NotImplementedError
+
+    # def fetchThumbnail(self): todo
+    #     """"""
+
+    def isDownloaded(self, variantName):
+        """Return True or False based on if the given variant name is present on the system
+        this should be done by checking against savedVariants which should be a dict, and should be populated if None."""
+        raise NotImplementedError
+
+    def createMetadetaFile(self, url, matName):
+        pass

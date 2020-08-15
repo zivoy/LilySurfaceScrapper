@@ -22,10 +22,12 @@
 # from a single URL
 
 from .AbstractScrapper import AbstractScrapper
+import os
 
 class TextureHavenScrapper(AbstractScrapper):
     source_name = "Texture Haven"
     home_url = "https://texturehaven.com/textures/"
+    home_dir ="hdrihaven"
 
     @classmethod
     def canHandleUrl(cls, url):
@@ -47,14 +49,14 @@ class TextureHavenScrapper(AbstractScrapper):
         self._html = html
         self._maps = maps
         self._variants = variants
+        self._base_name = html.xpath("//title/text()")[0].split('|')[0].strip().replace("_", " ").title()
         return variants
     
-    def fetchVariant(self, variant_index, material_data):
+    def fetchVariant(self, variant_index, material_data, reinstall=False):
         """Fill material_data with data from the selected variant.
         Must fill material_data.name and material_data.maps.
         Return a boolean status, and fill self.error to add error messages."""
         # Get data saved in fetchVariantList
-        html = self._html
         maps = self._maps
         variants = self._variants
         
@@ -62,9 +64,11 @@ class TextureHavenScrapper(AbstractScrapper):
             self.error = "Invalid variant index: {}".format(variant_index)
             return False
         
-        base_name = html.xpath("//title/text()")[0].split('|')[0].strip().replace("_", " ").title()
         var_name = variants[variant_index]
-        material_data.name = "texturehaven/" + base_name + '/' + var_name
+        material_data.name = os.path.join(self.home_dir, self._base_name, var_name)
+
+        if self.savedVariants is not None:
+            self.savedVariants[var_name] = True
 
         # Translate TextureHaven map names into our internal map names
         maps_tr = {
@@ -86,11 +90,21 @@ class TextureHavenScrapper(AbstractScrapper):
             'Specular': 'specular',
             'Displacement': 'height',
         }
+
         for m in maps:
             map_name = m.xpath("div[@class='map-download']//text()")[0]
             map_url = "https://texturehaven.com" + m.xpath(".//div[@class='res-item']/a/@href")[variant_index]
             if map_name in maps_tr:
                 map_name = maps_tr[map_name]
-                material_data.maps[map_name] = self.fetchImage(map_url, material_data.name, map_name)
+                material_data.maps[map_name] = self.fetchImage(map_url, material_data.name, map_name,
+                                                               reinstall=reinstall)
         
         return True
+
+    def isDownloaded(self, variantName):
+        if self.savedVariants is None:
+            self.savedVariants = {i: False for i in self._variants}
+            for i in os.listdir(self.getTextureDirectory(os.path.join(self.home_dir, self._base_name))):
+                self.savedVariants[i] = True
+
+        return self.savedVariants[variantName]

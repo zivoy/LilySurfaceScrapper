@@ -46,6 +46,7 @@ class ScrappedData():
         self.error = None
         self._variants = None
         self._scrapper = type(self).makeScrapper(url)
+        self.reinstall = False
         if self._scrapper is None:
             self.error = UNSUPPORTED_PROVIDER_ERR
         else:
@@ -62,11 +63,18 @@ class ScrappedData():
             self.error = self._scrapper.error
         return self._variants
 
+    def isDownloaded(self, variantName):
+        return self._scrapper.isDownloaded(variantName)
+
     def selectVariant(self, variant_index):
         if self.error is not None:
             return False
         if self._variants is None:
             self.getVariantList()
-        if not self._scrapper.fetchVariant(variant_index, self):
+        if not self._scrapper.fetchVariant(variant_index, self, reinstall=self.reinstall):
             return False
+        return True
+
+    def setReinstall(self, value):
+        self.reinstall = value
         return True

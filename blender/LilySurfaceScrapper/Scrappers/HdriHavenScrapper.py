@@ -22,11 +22,13 @@
 # from a single URL
 
 from .AbstractScrapper import AbstractScrapper
+import os
 
 class HdriHavenScrapper(AbstractScrapper):
     scrapped_type = {'WORLD'}
     source_name = "HDRI Haven"
     home_url = "https://hdrihaven.com/hdris/"
+    home_dir = "hdrihaven"
 
     @classmethod
     def canHandleUrl(cls, url):
@@ -62,24 +64,26 @@ class HdriHavenScrapper(AbstractScrapper):
         self._html = html
         self._variant_data = variant_data
         self._variants = variants
+        self._base_name = html.xpath('//h1/b/text()')[0]
         return variants
     
-    def fetchVariant(self, variant_index, material_data):
+    def fetchVariant(self, variant_index, material_data, reinstall=False):
         """Fill material_data with data from the selected variant.
         Must fill material_data.name and material_data.maps.
         Return a boolean status, and fill self.error to add error messages."""
         # Get data saved in fetchVariantList
-        html = self._html
         variant_data = self._variant_data
         variants = self._variants
         
         if variant_index < 0 or variant_index >= len(variants):
             self.error = "Invalid variant index: {}".format(variant_index)
             return False
-        
-        base_name = html.xpath('//h1/b/text()')[0]
+
         var_name = variants[variant_index]
-        material_data.name = "hdrihaven/" + base_name + '/' + var_name
+        material_data.name = os.path.join(self.home_dir, self._base_name, var_name)
+
+        if self.savedVariants is not None:
+            self.savedVariants[var_name] = True
 
         url = "https://hdrihaven.com" + variant_data[variant_index].attrib['href']
         if url.endswith('.exr') or url.endswith('.hdr') or url.endswith('.jpg'):
@@ -87,6 +91,14 @@ class HdriHavenScrapper(AbstractScrapper):
         else:
             redirect_html = self.fetchHtml(url)
             map_url = "https://hdrihaven.com" + redirect_html.xpath("//a[@download]/@href")[0]
-        material_data.maps['sky'] = self.fetchImage(map_url, material_data.name, 'sky')
+        material_data.maps['sky'] = self.fetchImage(map_url, material_data.name, 'sky', reinstall=reinstall)
         
         return True
+
+    def isDownloaded(self, variantName):
+        if self.savedVariants is None:
+            self.savedVariants = {i: False for i in self._variants}
+            for i in os.listdir(self.getTextureDirectory(os.path.join(self.home_dir, self._base_name))):
+                self.savedVariants[i] = True
+
+        return self.savedVariants[variantName]

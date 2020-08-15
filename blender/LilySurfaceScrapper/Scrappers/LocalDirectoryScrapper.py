@@ -21,12 +21,11 @@
 # This file is part of LilySurfaceScrapper, a Blender add-on to import materials
 # from a single URL
 
-import zipfile
 import os
 from os import path
-import re
-from urllib.parse import urlparse, parse_qs, urlencode, urljoin
+
 from .AbstractScrapper import AbstractScrapper
+
 
 class LocalDirectoryScrapper(AbstractScrapper):
     """
@@ -35,13 +34,14 @@ class LocalDirectoryScrapper(AbstractScrapper):
     """
     source_name = "Local Directory"
     home_url = None
+    home_dir = ""
 
     _texture_cache = None
 
     @classmethod
     def canHandleUrl(cls, url):
         """Return true if the URL can be scrapped by this scrapper."""
-        print("test: {}" + url)
+        print(f"test: {url}")
         return path.isdir(url)
 
     def fetchVariantList(self, url):
@@ -50,14 +50,16 @@ class LocalDirectoryScrapper(AbstractScrapper):
         self._directory = url
         return [url]
 
-    def fetchVariant(self, variant_index, material_data):
+    def fetchVariant(self, variant_index, material_data, reinstall=False):
         d = self._directory
+
+        # todo implement reinstall  create metadata file containing link to page
 
         material_data.name = path.basename(path.dirname(d)) + "/" + path.basename(d)
 
         namelist = [f for f in os.listdir(d) if path.isfile(path.join(d, f))]
         
-        # TODO: Find a more exhaustive list of perfix/suffix
+        # TODO: Find a more exhaustive list of prefix/suffix
         maps_tr = {
             'baseColor': 'baseColor',
             'metallic': 'metallic',
@@ -94,3 +96,6 @@ class LocalDirectoryScrapper(AbstractScrapper):
                     map_name = maps_tr[k]
                     material_data.maps[map_name] = path.join(d, name)
         return True
+
+    def isDownloaded(self, variantName):
+        return True  # False?  todo this needs impovment

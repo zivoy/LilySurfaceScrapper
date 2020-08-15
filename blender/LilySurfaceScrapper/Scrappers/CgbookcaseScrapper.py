@@ -22,10 +22,12 @@
 # from a single URL
 
 from .AbstractScrapper import AbstractScrapper
+import os
 
 class CgbookcaseScrapper(AbstractScrapper):
     source_name = "cgbookcase.com"
     home_url = "https://www.cgbookcase.com/textures/"
+    home_dir = "cgbookcase"
 
     @classmethod
     def canHandleUrl(cls, url):
@@ -61,14 +63,14 @@ class CgbookcaseScrapper(AbstractScrapper):
         self._variants_data = variants_data
         self._variants = variants
         self._double_sided = double_sided
+        self._base_name = str(html.xpath("//h1/text()")[0])
         return variants
     
-    def fetchVariant(self, variant_index, material_data):
+    def fetchVariant(self, variant_index, material_data, reinstall=False):
         """Fill material_data with data from the selected variant.
         Must fill material_data.name and material_data.maps.
         Return a boolean status, and fill self.error to add error messages."""
         # Get data saved in fetchVariantList
-        html = self._html
         variants_data = self._variants_data
         variants = self._variants
         double_sided = self._double_sided
@@ -77,9 +79,11 @@ class CgbookcaseScrapper(AbstractScrapper):
             self.error = "Invalid variant index: {}".format(variant_index)
             return False
 
-        base_name = str(html.xpath("//h1/text()")[0])
         variant_name = variants[variant_index]
-        material_data.name = "cgbookcase/" + base_name + "/" + variant_name
+        material_data.name = os.path.join(self.home_dir, self._base_name, variant_name)
+
+        if self.savedVariants is not None:
+            self.savedVariants[variant_name] = True
 
         # If two sided, use several variants, and label them with is_back_side bool
         n = len(variants_data)
@@ -110,6 +114,15 @@ class CgbookcaseScrapper(AbstractScrapper):
                     map_name = maps_tr[map_name]
                     if is_back_side:
                         map_name += "_back"
-                    material_data.maps[map_name] = self.fetchImage(map_url, material_data.name, map_name)
+                    material_data.maps[map_name] = self.fetchImage(map_url, material_data.name, map_name,
+                                                                   reinstall=reinstall)
         
         return True
+
+    def isDownloaded(self, variantName):
+        if self.savedVariants is None:
+            self.savedVariants = {i: False for i in self._variants}
+            for i in os.listdir(self.getTextureDirectory(os.path.join(self.home_dir, self._base_name))):
+                self.savedVariants[i] = True
+
+        return self.savedVariants[variantName]
