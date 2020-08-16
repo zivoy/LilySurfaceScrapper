@@ -20,10 +20,6 @@ class LightData(ScrappedData):
             if 'LIGHT' in S.scrapped_type and S.canHandleUrl(url):
                 return S()
         return None
-    
-    def loadImages(self):
-        """Implement this in derived classes"""
-        raise NotImplementedError
 
     def createLights(self):
         """Implement this in derived classes"""

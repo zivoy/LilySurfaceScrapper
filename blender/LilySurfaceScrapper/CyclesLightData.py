@@ -1,25 +1,15 @@
 import bpy
-import os
 
 from .LightData import LightData
-from .cycles_utils import (
-    getCyclesImage, autoAlignNodes,
-)
-from .preferences import getPreferences
+from .cycles_utils import autoAlignNodes
 
 
 class CyclesLightData(LightData):
-    def loadImages(self):
-        """This is not needed by createMaterial, but is called when
-        create_material is false to load images anyway"""
-        img = self.maps['sky']
-        if img is not None:
-            getCyclesImage(img)
-
     def createLights(self):
         light = bpy.context.object.data
 
         light.use_nodes = True
+        light.type = "POINT"
 
         nodes = light.node_tree.nodes
         links = light.node_tree.links
