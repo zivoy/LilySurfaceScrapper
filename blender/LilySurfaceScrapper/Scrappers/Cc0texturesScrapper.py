@@ -59,7 +59,7 @@ class Cc0texturesScrapper(AbstractScrapper):
         variants = list(variants_data.keys())
         variants_urls = [variants_data[v]["RawDownloadLink"] for v in variants]
 
-        self.createMetadetaFile(url, asset_id)
+        self.createMetadetaFile(url, asset_id, variants)
 
         self._variants_urls = variants_urls
         self._variants = variants

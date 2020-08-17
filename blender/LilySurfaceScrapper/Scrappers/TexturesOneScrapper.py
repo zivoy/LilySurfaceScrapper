@@ -70,9 +70,8 @@ class TexturesOneMaterialScrapper(AbstractScrapper):
         return self.source_scrapper.fetchVariantList(source_url)
 
     def fetchVariant(self, variant_index, material_data, reinstall=False):
-        # todo implement reinstall
         # todo implement homedir implementation
-        return self.source_scrapper.fetchVariant(variant_index, material_data)
+        return self.source_scrapper.fetchVariant(variant_index, material_data, reinstall=reinstall)
 
     def isDownloaded(self, variantName):
         return False  # todo find out what is going on here and implement this properly

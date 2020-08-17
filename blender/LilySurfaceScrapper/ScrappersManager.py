@@ -48,6 +48,13 @@ class ScrappersManager():
                 m = getattr(module, x)
                 if isinstance(m, type) and issubclass(m, AbstractScrapper):
                     scrappers.append(m)
+
+        # remove doubles
+        scrappers = list(set(scrappers))
+
+        # make it a bit nicer
+        scrappers = sorted(scrappers, key=lambda x: x.source_name)
+
         return scrappers
 
     @classmethod
@@ -55,3 +62,9 @@ class ScrappersManager():
         if cls.all_scrappers is None:
             cls.all_scrappers = ScrappersManager.makeScrappersList()
         return cls.all_scrappers
+
+    @classmethod
+    def getScraperAtIndex(cls, index):
+        if cls.all_scrappers is None:
+            cls.getScrappersList()
+        return cls.all_scrappers[index]

@@ -27,7 +27,7 @@ import os
 class TextureHavenScrapper(AbstractScrapper):
     source_name = "Texture Haven"
     home_url = "https://texturehaven.com/textures/"
-    home_dir ="hdrihaven"
+    home_dir ="texturehaven"
 
     @classmethod
     def canHandleUrl(cls, url):
@@ -51,7 +51,7 @@ class TextureHavenScrapper(AbstractScrapper):
         self._variants = variants
         self._base_name = html.xpath("//title/text()")[0].split('|')[0].strip().replace("_", " ").title()
 
-        self.createMetadetaFile(url, self._base_name)
+        self.createMetadetaFile(url, self._base_name, variants)
         return variants
     
     def fetchVariant(self, variant_index, material_data, reinstall=False):

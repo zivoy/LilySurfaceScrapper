@@ -66,7 +66,7 @@ class HdriHavenScrapper(AbstractScrapper):
         self._variants = variants
         self._base_name = html.xpath('//h1/b/text()')[0]
 
-        self.createMetadetaFile(url, self._base_name)
+        self.createMetadetaFile(url, self._base_name, variants)
         return variants
     
     def fetchVariant(self, variant_index, material_data, reinstall=False):

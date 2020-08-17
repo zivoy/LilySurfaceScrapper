@@ -65,7 +65,7 @@ class CgbookcaseScrapper(AbstractScrapper):
         self._double_sided = double_sided
         self._base_name = str(html.xpath("//h1/text()")[0])
 
-        self.createMetadetaFile(url, self._base_name)
+        self.createMetadetaFile(url, self._base_name, variants)
         return variants
     
     def fetchVariant(self, variant_index, material_data, reinstall=False):

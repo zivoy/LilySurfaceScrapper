@@ -30,6 +30,7 @@ from lxml import etree
 
 import requests
 import shutil
+import json
 
 from ..settings import TEXTURE_DIR
 from ..preferences import getPreferences
@@ -44,7 +45,7 @@ class AbstractScrapper():
     # The home directory of the scraper
     home_dir = "Abstract"
 
-    metadataFilename = ".textureLink"
+    metadataFilename = ".metadata"
     savedVariants = None
 
     @classmethod
@@ -52,6 +53,8 @@ class AbstractScrapper():
         raise NotImplementedError
 
     def __init__(self, texture_root=""):
+        self._base_name = None
+        self._thumbnailUrl = None
         self.error = None
         self.texture_root = texture_root
 
@@ -155,9 +158,11 @@ class AbstractScrapper():
         return path
 
     def fetchText(self, url, material_name, filename):
-        data = self._fetch(url)
         root = self.getTextureDirectory(material_name)
         path = os.path.join(root, filename)
+        if os.path.isfile(path):
+            return path
+        data = self._fetch(url)
         with open(path, "wb") as f:
             f.write(data.content)
         data.close()
@@ -187,17 +192,28 @@ class AbstractScrapper():
         """
         raise NotImplementedError
 
-    def createMetadetaFile(self, url, matName):
+    def createMetadetaFile(self, url, matName, variants: list):
         """create a metadata file with the link of the item so that it can be called upon for thumbnails"""
         directory = self.getTextureDirectory(os.path.join(self.home_dir, matName))
         metadataPath = os.path.join(directory, self.metadataFilename)
         if not os.path.isfile(metadataPath):
             with open(metadataPath, "w") as metadata:
-                metadata.write(url)
+                json.dump({"url": url, "variants": variants}, metadata)
 
         return metadataPath
 
     def saveThumbnail(self, url, matName):
         """save the thumbnail given the material name and url"""
         directory = os.path.join(self.home_dir, matName)
+        if self._thumbnailUrl is None or self._base_name is None:
+            return None
         return self.fetchImage(url, directory, "thumbnail")
+
+    def getAndSaveThumbnail(self, itemUrl):
+        if self.canHandleUrl(itemUrl):
+            self.fetchVariantList(itemUrl)
+        else:
+            print(f"'{itemUrl}' is a bad url -- {self.source_name}")
+            return None
+        return self.saveThumbnail(self._thumbnailUrl, self._base_name)
+

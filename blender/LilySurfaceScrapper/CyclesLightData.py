@@ -31,7 +31,7 @@ class CyclesLightData(LightData):
 
         iesNode = nodes.new(type="ShaderNodeTexIES")
         if pref.load_map:
-            bpy.ops.text.open(filepath=ies, internal=True)
+            bpy.ops.text.open(filepath=ies, internal=False)
             name = f"{os.path.basename(os.path.dirname(ies))}.ies"
             bpy.data.texts["lightData.ies"].name = name
             iesNode.ies = bpy.data.texts[name]

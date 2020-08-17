@@ -3,7 +3,7 @@ import re
 from .AbstractScrapper import AbstractScrapper
 
 
-class Cc0texturesScrapper(AbstractScrapper):
+class IesLibraryScrapper(AbstractScrapper):
     scrapped_type = {'LIGHT'}
     source_name = "IES Library"
     home_url = "https://ieslibrary.com"

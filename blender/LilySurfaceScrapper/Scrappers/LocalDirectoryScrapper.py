@@ -37,6 +37,7 @@ class LocalDirectoryScrapper(AbstractScrapper):
     home_dir = ""
 
     _texture_cache = None
+    # todo use metadata
 
     @classmethod
     def canHandleUrl(cls, url):

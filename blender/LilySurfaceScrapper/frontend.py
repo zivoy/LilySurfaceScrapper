@@ -14,6 +14,9 @@ from .ScrappersManager import ScrappersManager
 from .callback import register_callback, get_callback
 from .preferences import getPreferences
 import bpy.utils.previews
+from bpy.props import EnumProperty
+import json
+import time
 
 ## Operators
 
@@ -28,6 +31,11 @@ internal_states = {}
 
 registeredThumbnails = set()
 custom_icons = bpy.utils.previews.new()
+# need to keep this list or the text breaks in menus
+custom_icons.preview_icons = dict()
+
+# spam prevention measure
+lastChecks = dict()
 
 
 class PopupOperator(bpy.types.Operator):
@@ -507,8 +515,19 @@ class MATERIAL_PT_LilySurfaceScrapper(bpy.types.Panel):
             urls = {None}  # avoid doubles
             for S in ScrappersManager.getScrappersList():
                 if 'MATERIAL' in S.scrapped_type and S.home_url not in urls:
-                    layout.operator("wm.url_open", text=S.source_name).url = S.home_url  # todo: add image selector for downloaded stuff
+                    split = False
+                    factor = 1.
+                    #if S.__class__ not in custom_icons.preview_icons:
+                    if len(genoator(S)(0, 0)) > 0:
+                        split = True
+                        factor = .85
+                    row = layout.row().split(factor=factor, align=True)
+                    row.operator("wm.url_open", text=S.source_name).url = S.home_url
+                    if split:
+                        row.template_icon_view(context.active_object, S.__name__,scale=1,scale_popup=7.0,
+                                               show_labels=True)
                     urls.add(S.home_url)
+
 
 class WORLD_PT_LilySurfaceScrapper(bpy.types.Panel):
     """Panel with the Lily Scrapper button"""
@@ -531,7 +550,16 @@ class WORLD_PT_LilySurfaceScrapper(bpy.types.Panel):
             urls = {None}  # avoid doubles
             for S in ScrappersManager.getScrappersList():
                 if 'WORLD' in S.scrapped_type and S.home_url not in urls:
-                    layout.operator("wm.url_open", text=S.source_name).url = S.home_url
+                    split = False
+                    factor = 1.
+                    if len(genoator(S)(0, 0)) > 0:
+                        split = True
+                        factor = .85
+                    row = layout.split(factor=factor, align=True)
+                    row.operator("wm.url_open", text=S.source_name).url = S.home_url
+                    if split:
+                        row.template_icon_view(context.active_object, S.__name__, scale=1, scale_popup=7.0,
+                                               show_labels=True)
                     urls.add(S.home_url)
 
 
@@ -560,53 +588,92 @@ class LIGHT_PT_LilySurfaceScrapper(bpy.types.Panel):
             urls = {None}  # avoid doubles
             for S in ScrappersManager.getScrappersList():
                 if 'LIGHT' in S.scrapped_type and S.home_url not in urls:
-                    layout.operator("wm.url_open", text=S.source_name).url = S.home_url
+                    split = False
+                    factor = 1.
+                    if len(genoator(S)(0, 0)) > 0:
+                        split = True
+                        factor = .85
+                    row = layout.split(factor=factor, align=True)
+                    row.operator("wm.url_open", text=S.source_name).url = S.home_url
+                    if split:
+                        row.template_icon_view(context.active_object, S.__name__, scale=1, scale_popup=7.0,
+                                               show_labels=True)
                     urls.add(S.home_url)
 
 ## Registration
 
 
-def generateThumbnailIcon(scraper):
-    global custom_icons
+def printAll(item):
+    [print(f"{i}\t\t{getattr(item,i)}") for i in dir(item) if hasattr(item, i)]
 
-    items = dict()
 
-    basedir = scraper.getTextureDirectory(scraper.home_dir)
+def genoator(scraper):
+    def generateThumbnailIcon(self, context):
+        global custom_icons
 
-    for i in os.listdir(basedir):
-        if i in registeredThumbnails:
-            items[i] = i
-            continue
-        metadetaFile = os.path.join(basedir, i, scraper.metadataFilename)
-        if not os.path.isfile(metadetaFile): # skip anything that does not have a metadeta file to make stuff easier for now todo use local scraper
-            continue
-        for j in os.listdir(os.path.join(basedir, i)):
-            if "thumbnail" in j:
-                thumbnail = j
-                break
-        else:
-            # metadetaFile = os.path.join(basedir, i, scraper.metadataFilename)
-            # if os.path.isfile(metadetaFile):
-            #     with open(metadetaFile, "r") as fl:
-            #         scraper.saveThumbnail(fl.read(), i) todo get thumbnail file
+        items = dict()
 
-            if "missingThumbnail" not in registeredThumbnails:
-                registeredThumbnails.add("missingThumbnail")
-                missingThumb = scraper.fetchImage(
-                    "https://icon-library.com/images/image-missing-icon/image-missing-icon-14.jpg",
-                    "", "missingThumbnail")
-                custom_icons.load("missingThumbnail", missingThumb, 'IMAGE')
-                items[i] = "missingThumbnail"
+        texdir = os.path.dirname(bpy.data.filepath)
+        Scraper = scraper(texture_root=texdir)
+
+        if "missingThumbnail" not in registeredThumbnails:
+            registeredThumbnails.add("missingThumbnail")
+            missingThumb = Scraper.fetchImage(
+                "https://icon-library.com/images/image-missing-icon/image-missing-icon-14.jpg",
+                "", "missing_thumbnail")
+            custom_icons.load("missing_thumbnail", missingThumb, 'IMAGE')
+
+        basedir = Scraper.getTextureDirectory(scraper.home_dir)
+
+        for i in os.listdir(basedir):
+            thumbnail=None
+            if i in registeredThumbnails:
+                items[i] = f"thumb_{scraper.__class__}-{i.replace(' ', '_')}"
                 continue
-        registeredThumbnails.add(i)
-        custom_icons.load(i, thumbnail, 'IMAGE')
-        items[i] = i
-    icons = list()
-    for i, v in enumerate(items.keys()):
-        icons.append((str(i), v, v, custom_icons[items[v]].icon_id, i))
+            metadetaFile = os.path.join(basedir, i, scraper.metadataFilename)
+            if not os.path.isfile(metadetaFile): # skip anything that does not have a metadeta file to make stuff easier for now todo use local scraper
+                continue
+            name = ""
+            for j in os.listdir(os.path.join(basedir, i)):
+                if "thumbnail" in j:
+                    thumbnail = os.path.join(basedir, i, j)
+                    name += f"thumb_{scraper.__class__}-{i.replace(' ', '_')}"
+                    break
+            else:
+                if os.path.isfile(metadetaFile):
+                    with open(metadetaFile, "r") as fl:
+                        try:
+                            data = dict(json.load(fl))
+                            if "url" in data and data["url"] in lastChecks and \
+                                    time.time() - lastChecks[data["url"]] >= 120:
+                                thumbnail = Scraper.getAndSaveThumbnail(data["url"])
+                                lastChecks[data["url"]] = time.time()
+                        except json.decoder.JSONDecodeError:
+                            pass
+                        except ValueError:
+                            pass
+                if thumbnail is None:
+                    # print("missing thumbnail",i)
+                    items[i] = "missing_thumbnail"
+                    continue
+            registeredThumbnails.add(i)
+            custom_icons.load(name, thumbnail, 'IMAGE')
+            items[i] = name
 
-    bpy.types.Object.presets = bpy.props.EnumProperty(options={"SKIP_SAVE"}, items=icons, update=lambda x, y: x)
+        icons = list()
+        for i, v in enumerate(items.keys()):
+            icon = custom_icons[items[v]].icon_id if items[v] in custom_icons \
+                else custom_icons["missing_thumbnail"].icon_id
+            icons.append((str(v).upper().replace(' ', '_'), str(v), f"{v} from {scraper.source_name}", icon, i))
+        # print(icons)
 
+        custom_icons.preview_icons[scraper.__class__] = icons
+
+        return custom_icons.preview_icons[scraper.__class__]
+    return generateThumbnailIcon
+
+
+# todo make selector output thing generator
 
 def register():
     bpy.utils.register_class(OBJECT_OT_LilySurfaceScrapper)
@@ -622,6 +689,16 @@ def register():
     bpy.utils.register_class(OBJECT_OT_LilyClipboardLightScrapper)
     bpy.utils.register_class(OBJECT_OT_LilyLightPromptVariant)
 
+    g = ScrappersManager.getScraperAtIndex
+
+    for i, S in enumerate(ScrappersManager.getScrappersList()):
+        setattr(bpy.types.Object, S.__name__,
+                EnumProperty(options={"SKIP_SAVE"}, items=genoator(S),
+                             update=lambda x, y:
+                             print(f"chose texture {g(int(i)).home_dir} / "
+                                   f"{getattr(bpy.types.Object, g(int(i)).__name__)}, {g(int(i)).__name__}")))
+        print(getattr(bpy.types.Object, S.__name__),"---")
+
 
 def unregister():
     bpy.utils.unregister_class(OBJECT_OT_LilySurfaceScrapper)
@@ -636,3 +713,7 @@ def unregister():
     bpy.utils.unregister_class(OBJECT_OT_LilyLightScrapper)
     bpy.utils.unregister_class(OBJECT_OT_LilyClipboardLightScrapper)
     bpy.utils.unregister_class(OBJECT_OT_LilyLightPromptVariant)
+
+    for S in ScrappersManager.getScrappersList():
+        if hasattr(bpy.types.Object, S.__name__):
+            delattr(bpy.types.Object, S.__name__)
