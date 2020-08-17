@@ -61,6 +61,11 @@ class HdriHavenScrapper(AbstractScrapper):
         variant_data = html.xpath("//div[@class='download-buttons']/a")
         variants = [self.clearString(self.extractButtonName(d)) for d in variant_data]
 
+        try:
+            self._thumbnailUrl = "https://hdrihaven.com"+html.xpath("//div[@id='main-preview']/img")[0].attrib["src"]
+        except:
+            pass
+
         self._html = html
         self._variant_data = variant_data
         self._variants = variants
@@ -86,6 +91,8 @@ class HdriHavenScrapper(AbstractScrapper):
 
         if self.savedVariants is not None:
             self.savedVariants[var_name] = True
+
+        self.saveThumbnail(self._thumbnailUrl, self._base_name)
 
         url = "https://hdrihaven.com" + variant_data[variant_index].attrib['href']
         if url.endswith('.exr') or url.endswith('.hdr') or url.endswith('.jpg'):

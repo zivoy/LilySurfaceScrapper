@@ -57,7 +57,12 @@ class CgbookcaseScrapper(AbstractScrapper):
             front_variants = [v for v in variants]
             variants += [v + " Backside" for v in front_variants]
             variants += [v + " Twosided" for v in front_variants]
-        
+
+        try:
+            self._thumbnailUrl = html.xpath("//div[@id='view-imageContainer']/img")[0].attrib["src"]
+        except:
+            pass
+
         # Save some data for fetchVariant
         self._html = html
         self._variants_data = variants_data
@@ -86,6 +91,8 @@ class CgbookcaseScrapper(AbstractScrapper):
 
         if self.savedVariants is not None:
             self.savedVariants[variant_name] = True
+
+        self.saveThumbnail(self._thumbnailUrl, self._base_name)
 
         # If two sided, use several variants, and label them with is_back_side bool
         n = len(variants_data)

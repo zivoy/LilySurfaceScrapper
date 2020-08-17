@@ -46,6 +46,11 @@ class TextureHavenScrapper(AbstractScrapper):
         variants = maps[0].xpath(".//div[@class='res-item']/a/div/text()")
         variants = [self.clearString(s) for s in variants]
 
+        try:
+            self._thumbnailUrl = "https://texturehaven.com"+html.xpath("//div[@id='item-preview']/img")[0].attrib["src"]
+        except:
+            pass
+
         self._html = html
         self._maps = maps
         self._variants = variants
@@ -71,6 +76,8 @@ class TextureHavenScrapper(AbstractScrapper):
 
         if self.savedVariants is not None:
             self.savedVariants[var_name] = True
+
+        self.saveThumbnail(self._thumbnailUrl, self._base_name)
 
         # Translate TextureHaven map names into our internal map names
         maps_tr = {
